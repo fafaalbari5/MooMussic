@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MusicHub</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<html>
+  <body>
+    <h1>MusicHub</h1>
+
+    <input id="search" placeholder="Search music..." />
+    <button onclick="search()">Search</button>
+
+    <ul id="results"></ul>
+    
+    <h2>Playlist</h2>
+    
+    <input id="playlistName" placeholder="Playlist Name">
+    
+    <button onclick="createPlaylist()">
+      Create Playlist
+    </button>
+    
+    <ul id="playlists"></ul>
+    
+    <h2>Playlist Detail</h2>
+    
+    <ul id="playlistTracks"></ul>
+    
+    <div id="playerBar">
+      <p id="nowPlaying">Now Playing: -</p>
+
+      <button onclick="prevSong()">⏮</button>
+      <button onclick="togglePlay()">⏯</button>
+      <button onclick="nextSong()">⏭</button>
+
+      <input type="range" id="progress" value="0" min="0" max="100" />
+
+      <span id="time">0:00 / 0:00</span>
+
+      <audio id="player"></audio>
+    </div>
+</div>
+
+<div id="playlistModal" class="hidden">
+  <div class="modal-content">
+    <h3>Select Playlist</h3>
+
+    <ul id="playlistSelection"></ul>
+
+    <button onclick="closePlaylistModal()">
+      Cancel
+    </button>
+  </div>
+</div>
+<div id="confirmModal" class="hidden">
+  <div class="modal-content">
+    <h3>Hapus Track?</h3>
+    <p id="confirmText">Apakah kamu yakin ingin menghapus lagu ini?</p>
+
+    <button id="confirmYes">Hapus</button>
+    <button onclick="closeConfirmModal()">Batal</button>
+  </div>
+</div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
