@@ -1,23 +1,34 @@
 const yts = require("yt-search");
+const { buildStreamUrl } = require("../services/streamService");
 
 async function searchYouTube(query) {
-  const result = await yts.search(query);
+  if (!query?.trim()) return [];
 
-  return result.videos.map(v => ({
-    id: v.videoId,
-    title: v.title,
-    thumbnail: v.thumbnail,
-    duration: v.timestamp,
-    source: "YouTube",
-    platform: "youtube"
-  }));
+  try {
+    const result = await yts.search(query);
+
+    return result.videos.slice(0, 20).map((v) => ({
+      id: v.videoId,
+      title: v.title,
+      thumbnail: v.thumbnail,
+      duration: v.timestamp,
+      source: "YouTube",
+      platform: "youtube"
+    }));
+  } catch (err) {
+    console.error("[youtubeResolver] search failed:", err.message);
+    return [];
+  }
 }
 
-async function getStreamUrl(track) {
-  if (!track?.id) return null;
+function getStreamUrl(track, startTime = 0) {
+  const id = track?.streamId || track?.track_id || track?.id;
+  if (!id) return null;
 
-  // MVP dummy stream (biar audio jalan dulu)
-  return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+  return buildStreamUrl(
+    { platform: "youtube", id },
+    startTime
+  );
 }
 
 module.exports = {

@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS playlist_tracks (
     title TEXT NOT NULL,
     artist TEXT,
     source TEXT NOT NULL,
+    platform TEXT,
     track_id TEXT,
     thumbnail TEXT,
 
@@ -24,4 +25,11 @@ CREATE TABLE IF NOT EXISTS playlist_tracks (
         ON DELETE CASCADE
 );
 `);
+
+try {
+  db.exec(`ALTER TABLE playlist_tracks ADD COLUMN platform TEXT`);
+} catch {
+  // column already exists
+}
+
 module.exports = db;

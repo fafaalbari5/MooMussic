@@ -3,8 +3,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("api", {
   searchAll: (q) => ipcRenderer.invoke("search-all", q),
 
-  getStream: (track) =>
-    ipcRenderer.invoke("get-stream", track),
+  getStream: (track, startTime = 0) =>
+    ipcRenderer.invoke("get-stream", track, startTime),
 
   createPlaylist: (name) =>
     ipcRenderer.invoke("create-playlist", name),

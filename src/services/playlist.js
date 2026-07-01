@@ -14,16 +14,22 @@ function getPlaylists() {
 }
 
 function addTrackToPlaylist(playlistId, track) {
+  const trackId =
+    track.platform === "soundcloud"
+      ? track.url || track.id
+      : track.id;
+
   return db.prepare(`
     INSERT INTO playlist_tracks
-    (playlist_id, title, source, track_id, thumbnail)
-    VALUES (?, ?, ?, ?, ?)
+    (playlist_id, title, source, platform, track_id, thumbnail)
+    VALUES (?, ?, ?, ?, ?, ?)
   `).run(
     playlistId,
     track.title,
     track.source,
-    track.id,
-    track.thumbnail
+    track.platform,
+    trackId,
+    track.thumbnail || null
   );
 }
 

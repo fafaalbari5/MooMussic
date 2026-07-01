@@ -6,6 +6,11 @@ let trackToDelete = null;
 
 let isPlaying = false;
 let isSeeking = false;
+let playbackOffset = 0;
+let nowPlayingTrack = null;
+let trackDurationSec = 0;
+let loadToken = 0;
+let pendingPlay = null;
 
 // =========================
 // DOM (HARUS di dalam window.onload)
@@ -43,19 +48,53 @@ function togglePlay() {
   }
 }
 
+function parseDuration(value) {
+  if (!value) return 0;
+  if (typeof value === "number" && isFinite(value)) return value;
+
+  const parts = String(value).split(":").map(Number);
+  if (parts.some((n) => Number.isNaN(n))) return 0;
+
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return 0;
+}
+
+function rememberTrackDuration(track) {
+  const fromMeta = parseDuration(track?.duration);
+  if (fromMeta > 0) {
+    trackDurationSec = fromMeta;
+  }
+}
+
+function getTotalDuration() {
+  if (trackDurationSec > 0) return trackDurationSec;
+
+  const remaining = audio.duration;
+  if (isFinite(remaining) && remaining > 0) {
+    return playbackOffset + remaining;
+  }
+
+  return 0;
+}
+
+function getDisplayTime() {
+  return playbackOffset + audio.currentTime;
+}
+
 // =========================
 // PLAYER EVENTS
 // =========================
 function bindPlayerEvents() {
   audio.addEventListener("timeupdate", () => {
     if (!isSeeking) {
-      const current = audio.currentTime;
-      const duration = audio.duration || 0;
+      const total = getTotalDuration();
+      const current = getDisplayTime();
 
-      progress.value = (current / duration) * 100 || 0;
+      progress.value = total > 0 ? (current / total) * 100 : 0;
 
       time.textContent =
-        `${formatTime(current)} / ${formatTime(duration)}`;
+        `${formatTime(current)} / ${formatTime(total)}`;
     }
   });
 
@@ -66,19 +105,175 @@ function bindPlayerEvents() {
   progress.addEventListener("input", () => {
     isSeeking = true;
 
-    const seekTime =
-      (progress.value / 100) * audio.duration;
+    const total = getTotalDuration();
+    const seekTime = (progress.value / 100) * total;
 
     time.textContent =
-      `${formatTime(seekTime)} / ${formatTime(audio.duration)}`;
+      `${formatTime(seekTime)} / ${formatTime(total)}`;
   });
 
-  progress.addEventListener("change", () => {
-    audio.currentTime =
-      (progress.value / 100) * audio.duration;
+  progress.addEventListener("change", async () => {
+    if (!nowPlayingTrack) {
+      isSeeking = false;
+      return;
+    }
+
+    const total = getTotalDuration();
+    if (total <= 0) {
+      isSeeking = false;
+      return;
+    }
+
+    const seekTime = (progress.value / 100) * total;
+    const current = getDisplayTime();
 
     isSeeking = false;
+
+    // Hindari reload stream jika perubahan terlalu kecil
+    if (Math.abs(seekTime - current) < 2) return;
+
+    try {
+      await playTrack(nowPlayingTrack, seekTime);
+    } catch (err) {
+      if (isIgnorablePlayError(err)) return;
+      console.error(err);
+      alert(
+        "Gagal seek. Streaming YouTube/SoundCloud perlu memuat ulang audio — " +
+        "coba tunggu beberapa detik atau geser ke posisi lain.\n\n" +
+        err.message
+      );
+    }
   });
+}
+
+function isIgnorablePlayError(err) {
+  if (!err) return true;
+  if (err.name === "AbortError") return true;
+
+  const msg = err.message || "";
+  return (
+    msg.includes("interrupted") ||
+    msg.includes("aborted") ||
+    msg.includes("cancelled")
+  );
+}
+
+function waitForCanPlay(audioEl, token, timeoutMs = 45000) {
+  return new Promise((resolve, reject) => {
+    if (token !== loadToken) {
+      reject(new Error("cancelled"));
+      return;
+    }
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      audioEl.removeEventListener("canplay", onReady);
+      audioEl.removeEventListener("loadeddata", onReady);
+      audioEl.removeEventListener("error", onError);
+    };
+
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+
+    const onError = () => {
+      cleanup();
+      const code = audioEl.error?.code;
+      const msg =
+        code === 4
+          ? "Format audio tidak didukung"
+          : code === 2
+            ? "Jaringan error saat memuat stream"
+            : "Gagal memuat audio";
+      reject(new Error(msg));
+    };
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("Stream timeout — coba lagi"));
+    }, timeoutMs);
+
+    if (audioEl.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      cleanup();
+      resolve();
+      return;
+    }
+
+    audioEl.addEventListener("canplay", onReady);
+    audioEl.addEventListener("loadeddata", onReady);
+    audioEl.addEventListener("error", onError);
+  });
+}
+
+// =========================
+// PLAY TRACK
+// =========================
+async function playTrack(track, startTime = 0) {
+  const token = ++loadToken;
+
+  nowPlayingTrack = track;
+  playbackOffset = startTime;
+  rememberTrackDuration(track);
+
+  document.getElementById("nowPlaying").textContent =
+    startTime > 0 ? "Seeking: " + track.title : "Loading: " + track.title;
+
+  const url = await window.api.getStream(track, startTime);
+  if (!url) {
+    alert("Stream tidak tersedia");
+    return false;
+  }
+
+  if (token !== loadToken) return false;
+
+  audio.pause();
+
+  if (pendingPlay) {
+    try {
+      await pendingPlay;
+    } catch {
+      // play() interrupted by new load — expected during seek
+    }
+    pendingPlay = null;
+  }
+
+  audio.src = url;
+  audio.load();
+
+  const onMetadata = () => {
+    if (
+      playbackOffset === 0 &&
+      isFinite(audio.duration) &&
+      audio.duration > 0 &&
+      trackDurationSec === 0
+    ) {
+      trackDurationSec = audio.duration;
+    }
+  };
+
+  audio.addEventListener("loadedmetadata", onMetadata, { once: true });
+
+  try {
+    await waitForCanPlay(audio, token);
+    if (token !== loadToken) return false;
+
+    pendingPlay = audio.play();
+    await pendingPlay;
+    pendingPlay = null;
+
+    if (token !== loadToken) return false;
+
+    isPlaying = true;
+    document.getElementById("nowPlaying").textContent =
+      "Now Playing: " + track.title;
+
+    return true;
+  } catch (err) {
+    pendingPlay = null;
+    if (token !== loadToken || isIgnorablePlayError(err)) return false;
+    throw err;
+  }
 }
 
 // =========================
@@ -99,13 +294,14 @@ async function search() {
     title.textContent = `${track.title} - ${track.source}`;
 
     title.onclick = async () => {
-  const url = await window.api.getStream(track);
-
-  if (!url) return alert("Stream tidak tersedia");
-
-  audio.src = url;
-  await audio.play();
-};
+      try {
+        await playTrack(track, 0);
+      } catch (err) {
+        console.error(err);
+        alert("Gagal memutar lagu: " + err.message);
+        document.getElementById("nowPlaying").textContent = "Now Playing: -";
+      }
+    };
 
     const btn = document.createElement("button");
     btn.textContent = "+";
@@ -197,20 +393,14 @@ async function playFromPlaylist(index) {
 
   const track = currentPlaylist[index];
 
-  const url = await window.api.getStream(track);
-
-  if (!url) {
-    alert("Stream tidak tersedia");
-    return;
+  try {
+    await playTrack(track, 0);
+    highlightActiveTrack();
+  } catch (err) {
+    console.error(err);
+    alert("Gagal memutar lagu: " + err.message);
+    document.getElementById("nowPlaying").textContent = "Now Playing: -";
   }
-
-  audio.src = url;
-  await audio.play();
-
-  document.getElementById("nowPlaying").textContent =
-    "Now Playing: " + track.title;
-
-  highlightActiveTrack();
 }
 
 function nextSong() {
