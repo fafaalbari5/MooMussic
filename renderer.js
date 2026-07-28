@@ -393,6 +393,10 @@ async function playFromPlaylist(index) {
 
   const track = currentPlaylist[index];
 
+  if (window.api.setQueue) {
+    await window.api.setQueue(currentPlaylist, index);
+  }
+
   try {
     await playTrack(track, 0);
     highlightActiveTrack();
@@ -442,6 +446,7 @@ async function openPlaylistModal() {
     li.onclick = async () => {
       await window.api.addTrack(p.id, selectedTrackForPlaylist);
       closePlaylistModal();
+      alert(`Lagu berhasil ditambahkan ke playlist: ${p.name}`);
     };
 
     list.appendChild(li);

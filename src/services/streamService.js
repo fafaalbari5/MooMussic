@@ -8,7 +8,7 @@ const play = require("play-dl");
 const ffmpegPath = require("ffmpeg-static");
 
 const YOUTUBE_FORMAT =
-  "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best";
+  "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best";
 
 let ytDlpWrap = null;
 let soundcloudReady = false;
@@ -35,51 +35,17 @@ function fetchText(url) {
   });
 }
 
-async function getSoundCloudClientId() {
-  if (process.env.SOUNDCLOUD_CLIENT_ID) {
-    return process.env.SOUNDCLOUD_CLIENT_ID;
-  }
-
-  const cachePath = path.join(app.getPath("userData"), "soundcloud.json");
-
-  if (fs.existsSync(cachePath)) {
-    try {
-      const cached = JSON.parse(fs.readFileSync(cachePath, "utf8"));
-      if (cached.client_id) return cached.client_id;
-    } catch {
-      // ignore invalid cache
-    }
-  }
-
-  const html = await fetchText("https://soundcloud.com");
-  const scriptMatch = html.match(
-    /src="(https:\/\/a-v2\.sndcdn\.com\/assets\/[^"]+\.js)"/
-  );
-
-  if (scriptMatch) {
-    const script = await fetchText(scriptMatch[1]);
-    const idMatch = script.match(/client_id:"([^"]+)"/);
-    if (idMatch) {
-      fs.writeFileSync(cachePath, JSON.stringify({ client_id: idMatch[1] }));
-      return idMatch[1];
-    }
-  }
-
-  const inlineMatch = html.match(/client_id=([a-zA-Z0-9]{32})/);
-  if (inlineMatch) {
-    fs.writeFileSync(cachePath, JSON.stringify({ client_id: inlineMatch[1] }));
-    return inlineMatch[1];
-  }
-
-  throw new Error("SoundCloud client_id tidak ditemukan. Set env SOUNDCLOUD_CLIENT_ID.");
-}
-
 async function ensureSoundCloud() {
   if (soundcloudReady) return;
 
-  const clientId = await getSoundCloudClientId();
-  await play.setToken({ soundcloud: { client_id: clientId } });
-  soundcloudReady = true;
+  try {
+    const clientId = await play.getFreeClientID();
+    await play.setToken({ soundcloud: { client_id: clientId } });
+    soundcloudReady = true;
+  } catch (err) {
+    console.error("[streamService] getFreeClientID failed:", err.message);
+    throw err;
+  }
 }
 
 async function ensureYtDlp() {
@@ -169,30 +135,37 @@ async function createYouTubeStream(videoId, startSeconds = 0) {
   return { stream, mimeType };
 }
 
-function soundCloudTypeToMime(type) {
-  if (type === "opus") return "audio/webm";
-  if (type === "ogg") return "audio/ogg";
-  return "audio/mpeg";
-}
-
 async function createSoundCloudStream(trackUrl, startSeconds = 0) {
-  await ensureSoundCloud();
+  const ytDlp = await ensureYtDlp();
+  const mimeType = await getYouTubeMimeType(ytDlp, trackUrl, trackUrl);
 
-  const options = {};
+  const args = [
+    trackUrl,
+    "-f",
+    YOUTUBE_FORMAT,
+    "--no-playlist",
+    "--no-warnings",
+    "--ffmpeg-location",
+    getFfmpegDir(),
+    "-o",
+    "-"
+  ];
 
   if (startSeconds > 0) {
-    // play-dl: seek tidak kompatibel dengan discordPlayerCompatibility
-    options.seek = Math.floor(startSeconds);
-  } else {
-    options.discordPlayerCompatibility = true;
+    args.push("--downloader", "ffmpeg");
+    args.push(
+      "--downloader-args",
+      `ffmpeg_i:-ss ${Math.floor(startSeconds)} -nostdin`
+    );
   }
 
-  const streamData = await play.stream(trackUrl, options);
+  const stream = ytDlp.execStream(args);
 
-  return {
-    stream: streamData.stream,
-    mimeType: soundCloudTypeToMime(streamData.type)
-  };
+  stream.on("error", (err) => {
+    console.error("[streamService] SC stream error:", err.message);
+  });
+
+  return { stream, mimeType };
 }
 
 async function createStream(platform, { id, url, startSeconds = 0 }) {
@@ -233,5 +206,6 @@ module.exports = {
   createStream,
   buildStreamUrl,
   ensureSoundCloud,
+  ensureYtDlp,
   toWebStream: (nodeStream) => Readable.toWeb(nodeStream)
 };

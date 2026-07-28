@@ -1,20 +1,28 @@
-const yts = require("yt-search");
-const { buildStreamUrl } = require("../services/streamService");
+const { buildStreamUrl, ensureYtDlp } = require("../services/streamService");
 
 async function searchYouTube(query) {
   if (!query?.trim()) return [];
 
   try {
-    const result = await yts.search(query);
+    const ytDlp = await ensureYtDlp();
+    const result = await ytDlp.execPromise([`ytsearch20:${query}`, "-j"]);
 
-    return result.videos.slice(0, 20).map((v) => ({
-      id: v.videoId,
-      title: v.title,
-      thumbnail: v.thumbnail,
-      duration: v.timestamp,
-      source: "YouTube",
-      platform: "youtube"
-    }));
+    const lines = result.trim().split("\n");
+    return lines.map(line => {
+      try {
+        const v = JSON.parse(line);
+        return {
+          id: v.id,
+          title: v.title,
+          thumbnail: v.thumbnail,
+          duration: v.duration_string || "0:00",
+          source: "YouTube",
+          platform: "youtube"
+        };
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
   } catch (err) {
     console.error("[youtubeResolver] search failed:", err.message);
     return [];
