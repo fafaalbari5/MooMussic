@@ -62,9 +62,7 @@ function parseDuration(value) {
 
 function rememberTrackDuration(track) {
   const fromMeta = parseDuration(track?.duration);
-  if (fromMeta > 0) {
-    trackDurationSec = fromMeta;
-  }
+  trackDurationSec = fromMeta > 0 ? fromMeta : 0;
 }
 
 function getTotalDuration() {
@@ -130,20 +128,41 @@ function bindPlayerEvents() {
     isSeeking = false;
 
     // Hindari reload stream jika perubahan terlalu kecil
-    if (Math.abs(seekTime - current) < 2) return;
+    if (Math.abs(seekTime - current) < 1.5) return;
+
+    // Fast local seek jika target ada dalam buffer HTML5 audio
+    const localTime = seekTime - playbackOffset;
+    if (localTime >= 0 && isTimeBuffered(audio, localTime)) {
+      audio.currentTime = localTime;
+      return;
+    }
 
     try {
       await playTrack(nowPlayingTrack, seekTime);
     } catch (err) {
       if (isIgnorablePlayError(err)) return;
-      console.error(err);
-      alert(
-        "Gagal seek. Streaming YouTube/SoundCloud perlu memuat ulang audio — " +
-        "coba tunggu beberapa detik atau geser ke posisi lain.\n\n" +
-        err.message
-      );
+      console.warn("[Seeking failed, attempting fallback play from 0]", err.message);
+      try {
+        await playTrack(nowPlayingTrack, 0);
+      } catch (fallbackErr) {
+        if (isIgnorablePlayError(fallbackErr)) return;
+        console.error("[Fallback play failed]", fallbackErr);
+      }
     }
   });
+}
+
+function isTimeBuffered(audioEl, timeSec) {
+  if (!audioEl || !audioEl.buffered) return false;
+  for (let i = 0; i < audioEl.buffered.length; i++) {
+    if (
+      timeSec >= audioEl.buffered.start(i) &&
+      timeSec <= audioEl.buffered.end(i)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isIgnorablePlayError(err) {
@@ -291,7 +310,8 @@ async function search() {
     const li = document.createElement("li");
 
     const title = document.createElement("span");
-    title.textContent = `${track.title} - ${track.source}`;
+    const durStr = track.duration ? ` (${track.duration})` : "";
+    title.textContent = `${track.title} - ${track.source}${durStr}`;
 
     title.onclick = async () => {
       try {
@@ -365,7 +385,8 @@ function renderPlaylistTracks() {
     const li = document.createElement("li");
 
     const title = document.createElement("span");
-    title.textContent = `${track.title} - ${track.source}`;
+    const durStr = track.duration ? ` (${track.duration})` : "";
+    title.textContent = `${track.title} - ${track.source}${durStr}`;
 
     title.onclick = () => playFromPlaylist(index);
 

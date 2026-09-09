@@ -22,10 +22,10 @@ async function searchSoundCloud(query) {
 
     return results.map((track) => ({
       id: String(track.id),
-      url: track.url,
+      url: track.permalink || track.url,
       title: track.name || track.title,
       thumbnail: track.thumbnail || track.thumbnails?.[0]?.url,
-      duration: formatDuration(track.durationInSec),
+      duration: formatDuration(track.durationInSec) || "0:00",
       source: "SoundCloud",
       platform: "soundcloud"
     }));

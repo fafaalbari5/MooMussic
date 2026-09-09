@@ -17,19 +17,20 @@ function addTrackToPlaylist(playlistId, track) {
   const trackId =
     track.platform === "soundcloud"
       ? track.url || track.id
-      : track.id;
+      : track.id || track.track_id;
 
   return db.prepare(`
     INSERT INTO playlist_tracks
-    (playlist_id, title, source, platform, track_id, thumbnail)
-    VALUES (?, ?, ?, ?, ?, ?)
+    (playlist_id, title, source, platform, track_id, thumbnail, duration)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
     playlistId,
     track.title,
     track.source,
     track.platform,
     trackId,
-    track.thumbnail || null
+    track.thumbnail || null,
+    track.duration || null
   );
 }
 

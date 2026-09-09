@@ -1,38 +1,44 @@
 const path = require("path");
 const fs = require("fs");
-const https = require("https");
 const { app } = require("electron");
 const { Readable } = require("stream");
+const { spawn } = require("child_process");
 const YTDlpWrap = require("yt-dlp-wrap").default;
 const play = require("play-dl");
 const ffmpegPath = require("ffmpeg-static");
 
-const YOUTUBE_FORMAT =
-  "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best";
-
 let ytDlpWrap = null;
 let soundcloudReady = false;
-const youtubeMimeCache = new Map();
+
+const youtubeUrlCache = new Map();
 
 function getFfmpegDir() {
   return path.dirname(ffmpegPath);
 }
 
-function fetchText(url) {
-  return new Promise((resolve, reject) => {
-    https
-      .get(url, { headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          fetchText(res.headers.location).then(resolve).catch(reject);
-          return;
-        }
+function attachProcessCleanup(outputStream, childProcess = null, inputStream = null) {
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
 
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => resolve(data));
-      })
-      .on("error", reject);
-  });
+    if (childProcess && !childProcess.killed) {
+      try {
+        childProcess.kill("SIGKILL");
+      } catch {}
+    }
+
+    if (inputStream && !inputStream.destroyed) {
+      try {
+        inputStream.destroy();
+      } catch {}
+    }
+  };
+
+  outputStream.on("close", cleanup);
+  outputStream.on("end", cleanup);
+  outputStream.on("error", cleanup);
+  outputStream.on("finish", cleanup);
 }
 
 async function ensureSoundCloud() {
@@ -51,7 +57,18 @@ async function ensureSoundCloud() {
 async function ensureYtDlp() {
   if (ytDlpWrap) return ytDlpWrap;
 
-  const binDir = path.join(app.getPath("userData"), "bin");
+  let userDataPath;
+  try {
+    userDataPath = app?.getPath ? app.getPath("userData") : null;
+  } catch {
+    userDataPath = null;
+  }
+
+  const baseDir =
+    userDataPath ||
+    path.join(process.env.APPDATA || process.cwd(), "moomussic");
+
+  const binDir = path.join(baseDir, "bin");
   if (!fs.existsSync(binDir)) {
     fs.mkdirSync(binDir, { recursive: true });
   }
@@ -60,7 +77,7 @@ async function ensureYtDlp() {
   const binaryPath = path.join(binDir, binaryName);
 
   if (!fs.existsSync(binaryPath)) {
-    console.log("[streamService] Mengunduh yt-dlp (sekali saja)...");
+    console.log("[streamService] Mengunduh yt-dlp...");
     await YTDlpWrap.downloadFromGithub(binaryPath);
     console.log("[streamService] yt-dlp siap.");
   }
@@ -69,103 +86,145 @@ async function ensureYtDlp() {
   return ytDlpWrap;
 }
 
-function extToMime(ext) {
-  if (ext === "webm") return "audio/webm";
-  if (ext === "m4a" || ext === "mp4") return "audio/mp4";
-  if (ext === "opus" || ext === "ogg") return "audio/ogg";
-  return "audio/mp4";
-}
-
-async function getYouTubeMimeType(ytDlp, videoUrl, videoId) {
-  if (youtubeMimeCache.has(videoId)) {
-    return youtubeMimeCache.get(videoId);
+async function getYouTubeDirectMediaUrl(videoId) {
+  const cached = youtubeUrlCache.get(videoId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached;
   }
 
-  try {
-    const line = await ytDlp.execPromise([
-      videoUrl,
-      "-f",
-      YOUTUBE_FORMAT,
-      "--no-playlist",
-      "-j"
-    ]);
+  const ytDlp = await ensureYtDlp();
+  const line = await ytDlp.execPromise([
+    `https://www.youtube.com/watch?v=${videoId}`,
+    "-f",
+    "bestaudio[ext=webm]/bestaudio",
+    "-j"
+  ]);
 
-    const info = JSON.parse(line);
-    const mimeType = extToMime(info.ext);
-    youtubeMimeCache.set(videoId, mimeType);
-    return mimeType;
-  } catch (err) {
-    console.warn("[streamService] mime probe failed:", err.message);
-    return "audio/mp4";
-  }
+  const info = JSON.parse(line);
+  const data = {
+    url: info.url,
+    userAgent:
+      info.http_headers?.["User-Agent"] ||
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    expiresAt: Date.now() + 3600 * 1000 * 2
+  };
+
+  youtubeUrlCache.set(videoId, data);
+  return data;
 }
 
 async function createYouTubeStream(videoId, startSeconds = 0) {
-  const ytDlp = await ensureYtDlp();
-  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const startSec = Math.floor(startSeconds);
 
-  const mimeType = await getYouTubeMimeType(ytDlp, url, videoId);
+  try {
+    const { url, userAgent } = await getYouTubeDirectMediaUrl(videoId);
 
-  const args = [
-    url,
-    "-f",
-    YOUTUBE_FORMAT,
-    "--no-playlist",
-    "--no-warnings",
-    "--ffmpeg-location",
-    getFfmpegDir(),
-    "-o",
-    "-"
-  ];
+    const ffmpegArgs = [
+      "-user_agent",
+      userAgent,
+      ...(startSec > 0 ? ["-ss", String(startSec)] : []),
+      "-i",
+      url,
+      "-c",
+      "copy",
+      "-f",
+      "webm",
+      "pipe:1"
+    ];
 
-  if (startSeconds > 0) {
-    args.push("--downloader", "ffmpeg");
-    args.push(
-      "--downloader-args",
-      `ffmpeg_i:-ss ${Math.floor(startSeconds)} -nostdin`
+    const ffmpeg = spawn(ffmpegPath, ffmpegArgs, {
+      highWaterMark: 1024 * 1024
+    });
+
+    ffmpeg.on("error", (err) => {
+      console.warn("[streamService] direct ffmpeg YouTube error:", err.message);
+      youtubeUrlCache.delete(videoId);
+    });
+
+    attachProcessCleanup(ffmpeg.stdout, ffmpeg);
+
+    return { stream: ffmpeg.stdout, mimeType: "audio/webm" };
+  } catch (err) {
+    console.warn(
+      "[streamService] direct ffmpeg YouTube failed, fallback to yt-dlp execStream:",
+      err.message
     );
+    youtubeUrlCache.delete(videoId);
+
+    const ytDlp = await ensureYtDlp();
+    const args = [
+      `https://www.youtube.com/watch?v=${videoId}`,
+      "-f",
+      "bestaudio[ext=webm]/bestaudio",
+      "--no-playlist",
+      "--no-warnings",
+      "--ffmpeg-location",
+      getFfmpegDir(),
+      "-o",
+      "-"
+    ];
+
+    if (startSec > 0) {
+      args.push("--downloader", "ffmpeg");
+      args.push(
+        "--downloader-args",
+        `ffmpeg_i:-ss ${startSec} -nostdin`
+      );
+    }
+
+    const ytStream = ytDlp.execStream(args);
+    return { stream: ytStream, mimeType: "audio/webm" };
   }
-
-  const stream = ytDlp.execStream(args);
-
-  stream.on("error", (err) => {
-    console.error("[streamService] yt-dlp stream error:", err.message);
-  });
-
-  return { stream, mimeType };
 }
 
 async function createSoundCloudStream(trackUrl, startSeconds = 0) {
-  const ytDlp = await ensureYtDlp();
-  const mimeType = await getYouTubeMimeType(ytDlp, trackUrl, trackUrl);
+  await ensureSoundCloud();
+  const startSec = Math.floor(startSeconds);
 
-  const args = [
-    trackUrl,
-    "-f",
-    YOUTUBE_FORMAT,
-    "--no-playlist",
-    "--no-warnings",
-    "--ffmpeg-location",
-    getFfmpegDir(),
-    "-o",
-    "-"
-  ];
+  try {
+    // Selalu ambil streamData segar dari play-dl (tanpa cache URL HLS yang kedaluwarsa)
+    const streamData = await play.stream(trackUrl);
 
-  if (startSeconds > 0) {
-    args.push("--downloader", "ffmpeg");
-    args.push(
-      "--downloader-args",
-      `ffmpeg_i:-ss ${Math.floor(startSeconds)} -nostdin`
-    );
+    const mimeType =
+      streamData.type === "opus" || streamData.type === "webm"
+        ? "audio/webm"
+        : "audio/mpeg";
+
+    if (startSec <= 0) {
+      attachProcessCleanup(streamData.stream, null, streamData.stream);
+      return { stream: streamData.stream, mimeType };
+    }
+
+    // Pipe stream segar ke ffmpeg dengan -ss startSec
+    const ffmpegArgs = [
+      "-ss",
+      String(startSec),
+      "-i",
+      "pipe:0",
+      "-c",
+      "copy",
+      "-f",
+      "mp3",
+      "pipe:1"
+    ];
+
+    const ffmpeg = spawn(ffmpegPath, ffmpegArgs, {
+      highWaterMark: 1024 * 1024
+    });
+
+    streamData.stream.pipe(ffmpeg.stdin);
+
+    ffmpeg.on("error", (err) => {
+      console.error("[streamService] SoundCloud ffmpeg error:", err.message);
+    });
+
+    attachProcessCleanup(ffmpeg.stdout, ffmpeg, streamData.stream);
+
+    return { stream: ffmpeg.stdout, mimeType: "audio/mpeg" };
+  } catch (err) {
+    console.error("[streamService] SoundCloud stream error:", err.message);
+    throw err;
   }
-
-  const stream = ytDlp.execStream(args);
-
-  stream.on("error", (err) => {
-    console.error("[streamService] SC stream error:", err.message);
-  });
-
-  return { stream, mimeType };
 }
 
 async function createStream(platform, { id, url, startSeconds = 0 }) {
@@ -190,9 +249,9 @@ function buildStreamUrl(track, startSeconds = 0) {
   params.set("platform", track.platform);
 
   if (track.platform === "youtube") {
-    params.set("id", track.id);
+    params.set("id", track.id || track.track_id || track.streamId);
   } else if (track.platform === "soundcloud") {
-    params.set("url", track.url);
+    params.set("url", track.url || track.track_id || track.streamId);
   }
 
   if (startSeconds > 0) {
@@ -207,5 +266,6 @@ module.exports = {
   buildStreamUrl,
   ensureSoundCloud,
   ensureYtDlp,
-  toWebStream: (nodeStream) => Readable.toWeb(nodeStream)
+  toWebStream: (nodeStream) =>
+    Readable.toWeb(nodeStream, { strategy: { highWaterMark: 1024 * 1024 } })
 };
