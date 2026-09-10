@@ -1,25 +1,86 @@
-const yts = require("yt-search");
-const { buildStreamUrl } = require("../services/streamService");
+const play = require("play-dl");
+const { buildStreamUrl, ensureYtDlp } = require("../services/streamService");
+
+function formatDuration(sec) {
+  if (!sec || isNaN(sec)) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+async function searchYouTubeViaYtDlp(query) {
+  try {
+    const ytDlp = await ensureYtDlp();
+    const output = await ytDlp.execPromise([
+      `ytsearch15:${query}`,
+      "--flat-playlist",
+      "-j",
+      "--no-warnings"
+    ]);
+
+    const lines = output.trim().split("\n");
+    return lines
+      .map((line) => {
+        try {
+          const v = JSON.parse(line);
+          if (!v || !v.id) return null;
+
+          const dur =
+            v.duration_string ||
+            (typeof v.duration === "number"
+              ? formatDuration(v.duration)
+              : "0:00");
+
+          return {
+            id: v.id,
+            title: v.title,
+            thumbnail:
+              v.thumbnails?.[0]?.url ||
+              v.thumbnail ||
+              `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
+            duration: dur,
+            source: "YouTube",
+            platform: "youtube"
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch (err) {
+    console.error("[youtubeResolver] yt-dlp fallback search failed:", err.message);
+    return [];
+  }
+}
 
 async function searchYouTube(query) {
   if (!query?.trim()) return [];
 
   try {
-    const r = await yts(query);
-    const videos = r.videos || [];
+    const results = await play.search(query, {
+      limit: 15,
+      source: { youtube: "video" }
+    });
 
-    return videos.slice(0, 20).map(v => ({
-      id: v.videoId,
-      title: v.title,
-      thumbnail: v.thumbnail || v.image,
-      duration: v.timestamp || "0:00",
-      source: "YouTube",
-      platform: "youtube"
-    }));
+    if (results && results.length > 0) {
+      return results.map((v) => ({
+        id: v.id,
+        title: v.title,
+        thumbnail: v.thumbnails?.[0]?.url || v.thumbnail,
+        duration: v.durationRaw || "0:00",
+        source: "YouTube",
+        platform: "youtube"
+      }));
+    }
   } catch (err) {
-    console.error("[youtubeResolver] search failed:", err.message);
-    return [];
+    console.warn(
+      "[youtubeResolver] play.search failed, falling back to yt-dlp:",
+      err.message
+    );
   }
+
+  // Fallback ke yt-dlp jika play.search gagal atau melempar error
+  return searchYouTubeViaYtDlp(query);
 }
 
 function getStreamUrl(track, startTime = 0) {

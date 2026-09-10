@@ -300,28 +300,36 @@ async function playTrack(track, startTime = 0) {
 // =========================
 async function search() {
   const query = document.getElementById("search").value;
-
-  const results = await window.api.searchAll(query);
+  if (!query || !query.trim()) return;
 
   const list = document.getElementById("results");
-  list.innerHTML = "";
+  list.innerHTML = "<li>Searching YouTube & SoundCloud...</li>";
 
-  results.forEach(track => {
-    const li = document.createElement("li");
+  try {
+    const results = await window.api.searchAll(query);
+    list.innerHTML = "";
 
-    const title = document.createElement("span");
-    const durStr = track.duration ? ` (${track.duration})` : "";
-    title.textContent = `${track.title} - ${track.source}${durStr}`;
+    if (!results || results.length === 0) {
+      list.innerHTML = "<li>Tidak ada hasil ditemukan.</li>";
+      return;
+    }
 
-    title.onclick = async () => {
-      try {
-        await playTrack(track, 0);
-      } catch (err) {
-        console.error(err);
-        alert("Gagal memutar lagu: " + err.message);
-        document.getElementById("nowPlaying").textContent = "Now Playing: -";
-      }
-    };
+    results.forEach(track => {
+      const li = document.createElement("li");
+
+      const title = document.createElement("span");
+      const durStr = track.duration ? ` (${track.duration})` : "";
+      title.textContent = `${track.title} - ${track.source}${durStr}`;
+
+      title.onclick = async () => {
+        try {
+          await playTrack(track, 0);
+        } catch (err) {
+          console.error(err);
+          alert("Gagal memutar lagu: " + err.message);
+          document.getElementById("nowPlaying").textContent = "Now Playing: -";
+        }
+      };
 
     const btn = document.createElement("button");
     btn.textContent = "+";
@@ -336,6 +344,10 @@ async function search() {
     li.appendChild(btn);
     list.appendChild(li);
   });
+  } catch (err) {
+    console.error(err);
+    list.innerHTML = "<li>Gagal mencari lagu: " + err.message + "</li>";
+  }
 }
 
 // =========================
