@@ -20,4 +20,14 @@ contextBridge.exposeInMainWorld("api", {
 
   deleteTrack: (trackId) =>
     ipcRenderer.invoke("delete-track", trackId),
+
+  renamePlaylist: (id, name) =>
+    ipcRenderer.invoke("rename-playlist", id, name),
+
+  deletePlaylist: (id) =>
+    ipcRenderer.invoke("delete-playlist", id),
+
+  minimizeWin: () => ipcRenderer.invoke("win-minimize"),
+  maximizeWin: () => ipcRenderer.invoke("win-maximize"),
+  closeWin: () => ipcRenderer.invoke("win-close"),
 });

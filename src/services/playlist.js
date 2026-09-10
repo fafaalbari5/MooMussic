@@ -48,10 +48,27 @@ function deleteTrack(trackId) {
   `).run(trackId);
 }
 
+function renamePlaylist(playlistId, name) {
+  return db.prepare(`
+    UPDATE playlists
+    SET name = ?
+    WHERE id = ?
+  `).run(name, playlistId);
+}
+
+function deletePlaylist(playlistId) {
+  return db.prepare(`
+    DELETE FROM playlists
+    WHERE id = ?
+  `).run(playlistId);
+}
+
 module.exports = {
   createPlaylist,
   getPlaylists,
   addTrackToPlaylist,
   getPlaylistTracks,
-  deleteTrack
+  deleteTrack,
+  renamePlaylist,
+  deletePlaylist
 };

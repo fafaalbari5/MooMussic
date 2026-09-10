@@ -6,6 +6,9 @@ const playlist = require("./src/services/playlist");
 const player = require("./src/services/playerservices");
 const streamService = require("./src/services/streamService");
 
+app.commandLine.appendSwitch("ignore-certificate-errors");
+app.commandLine.appendSwitch("allow-insecure-localhost");
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "moomuss",
@@ -76,19 +79,53 @@ function registerIpc() {
   );
 
   ipcMain.handle("delete-track", (_, id) => playlist.deleteTrack(id));
+
+  ipcMain.handle("rename-playlist", (_, id, name) =>
+    playlist.renamePlaylist(id, name)
+  );
+
+  ipcMain.handle("delete-playlist", (_, id) =>
+    playlist.deletePlaylist(id)
+  );
+
+  ipcMain.handle("win-minimize", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.minimize();
+  });
+
+  ipcMain.handle("win-maximize", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      if (win.isMaximized()) win.unmaximize();
+      else win.maximize();
+    }
+  });
+
+  ipcMain.handle("win-close", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.close();
+  });
 }
 
 app.whenReady().then(() => {
   registerProtocol();
   registerIpc();
 
+  app.on("certificate-error", (event, webContents, url, error, certificate, callback) => {
+    event.preventDefault();
+    callback(true);
+  });
+
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 900,
+    minHeight: 600,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false
     }
   });
 

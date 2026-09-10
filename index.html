@@ -1,69 +1,197 @@
 <!DOCTYPE html>
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MusicHub</title>
+  <title>MooMussic - Windows XP/Vista Edition</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<html>
-  <body>
-    <h1>MusicHub</h1>
+<body>
+  <div class="window-frame">
+    <!-- App Header Banner -->
+    <div class="title-bar">
+      <div class="title-bar-text">
+        <span class="app-icon">🎵</span> MooMussic - Classic Edition
+      </div>
+    </div>
 
-    <input id="search" placeholder="Search music..." />
-    <button onclick="search()">Search</button>
+    <!-- App Main Container -->
+    <div class="app-container">
+      <!-- Sidebar Nav -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h2>Menu Utama</h2>
+        </div>
+        <nav class="nav-menu">
+          <button class="nav-btn active" id="navSearch" onclick="showTab('search')">
+            <span class="icon">🔍</span> Cari Musik
+          </button>
+          <button class="nav-btn" id="navPlaylist" onclick="showTab('playlist')">
+            <span class="icon">📁</span> Koleksi Playlist
+          </button>
+        </nav>
 
-    <ul id="results"></ul>
-    
-    <h2>Playlist</h2>
-    
-    <input id="playlistName" placeholder="Playlist Name">
-    
-    <button onclick="createPlaylist()">
-      Create Playlist
-    </button>
-    
-    <ul id="playlists"></ul>
-    
-    <h2>Playlist Detail</h2>
-    
-    <ul id="playlistTracks"></ul>
-    
-    <div id="playerBar">
-      <p id="nowPlaying">Now Playing: -</p>
+        <!-- Spotify-style Sidebar Playlist Library -->
+        <div class="sidebar-library">
+          <div class="library-header">
+            <span>Daftar Playlist</span>
+            <button class="icon-add-btn" onclick="createPlaylistInstant()" title="Buat Playlist Baru Instant">➕</button>
+          </div>
+          <ul id="playlists" class="sidebar-playlist-list">
+            <li class="empty-state">Belum ada playlist</li>
+          </ul>
+        </div>
 
-      <button onclick="prevSong()">⏮</button>
-      <button onclick="togglePlay()">⏯</button>
-      <button onclick="nextSong()">⏭</button>
+        <!-- Now Playing Card Sidebar -->
+        <div class="now-playing-card">
+          <div class="card-header">Lagu Diputar</div>
+          <div class="card-body">
+            <img id="cardArt" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%231565c0'/><text x='50%' y='55%' font-size='48' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff'>🎵</text></svg>" alt="Album Art" />
+            <div id="cardTitle" class="card-title">Belum ada lagu</div>
+            <div id="cardPlatform" class="card-platform">-</div>
+          </div>
+        </div>
+      </aside>
 
-      <input type="range" id="progress" value="0" min="0" max="100" />
+      <!-- Main Content Area -->
+      <main class="main-content">
+        <!-- Search View Tab -->
+        <section id="searchView" class="tab-view active">
+          <div class="section-header">
+            <h2>Pencarian Musik</h2>
+            <p>Cari lagu favoritmu dari YouTube dan SoundCloud</p>
+          </div>
 
-      <span id="time">0:00 / 0:00</span>
+          <div class="search-box-container">
+            <input id="search" placeholder="Ketik nama lagu, penyanyi, atau judul..." onkeydown="if(event.key==='Enter') search()" />
+            <button class="xp-btn primary" onclick="search()">
+              🔍 Cari
+            </button>
+          </div>
+
+          <div class="results-header">Hasil Pencarian</div>
+          <ul id="results" class="track-list">
+            <li class="empty-state">Ketik kata kunci lalu tekan Cari...</li>
+          </ul>
+        </section>
+
+        <!-- Playlist View Tab (Spotify Hero Style) -->
+        <section id="playlistView" class="tab-view hidden">
+          <div class="spotify-hero-card">
+            <div class="hero-cover">🎵</div>
+            <div class="hero-info">
+              <span class="hero-badge">PLAYLIST</span>
+              <h1 id="selectedPlaylistTitle" class="hero-title" onclick="openRenameModal()" title="Klik untuk mengubah nama playlist">Pilih Playlist</h1>
+              <div id="heroTrackCount" class="hero-meta">Pilih playlist di sidebar untuk melihat lagu</div>
+              <div id="playlistActions" class="playlist-action-btns hidden">
+                <button class="xp-btn primary" onclick="playCurrentPlaylistAll()" title="Putar semua lagu">▶ Putar Semua</button>
+                <button class="xp-btn" onclick="openRenameModal()" title="Ubah Nama Playlist">✏️ Ubah Nama</button>
+                <button class="xp-btn danger" onclick="deleteCurrentPlaylist()" title="Hapus Playlist">🗑️ Hapus</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="playlist-content-panel">
+            <ul id="playlistTracks" class="track-list">
+              <li class="empty-state">Pilih playlist di sebelah kiri untuk melihat daftar lagu.</li>
+            </ul>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Bottom Player Dock -->
+    <footer id="playerBar">
+      <!-- Left Track Info -->
+      <div class="player-left">
+        <img id="playerAlbumArt" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'><rect width='50' height='50' fill='%230d47a1'/><text x='50%' y='55%' font-size='24' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff'>🎵</text></svg>" alt="Art" />
+        <div class="track-info-text">
+          <div id="nowPlaying" class="track-title-now">Now Playing: -</div>
+        </div>
+      </div>
+
+      <!-- Center Controls -->
+      <div class="player-center">
+        <div class="player-buttons">
+          <button class="control-btn" onclick="prevSong()" title="Lagu Sebelumnya">⏮</button>
+          <button class="control-btn play-main" onclick="togglePlay()" title="Putar / Jeda">⏯</button>
+          <button class="control-btn" onclick="nextSong()" title="Lagu Berikutnya">⏭</button>
+        </div>
+
+        <div class="progress-container">
+          <input type="range" id="progress" value="0" min="0" max="100" />
+          <span id="time">0:00 / 0:00</span>
+        </div>
+      </div>
+
+      <!-- Right Volume Controls -->
+      <div class="player-right">
+        <div id="volumeControl">
+          <span id="muteBtn" onclick="toggleMute()" title="Mute / Unmute">🔊</span>
+          <input type="range" id="volume" min="0" max="100" value="80" />
+          <span id="volumeValue">80%</span>
+        </div>
+      </div>
 
       <audio id="player"></audio>
+    </footer>
+  </div>
+
+  <!-- Modal Select Playlist -->
+  <div id="playlistModal" class="modal hidden">
+    <div class="xp-dialog">
+      <div class="dialog-header">
+        <span>➕ Tambahkan ke Playlist</span>
+        <button class="dialog-close" onclick="closePlaylistModal()">✕</button>
+      </div>
+      <div class="dialog-body">
+        <button class="xp-btn primary full-width" onclick="createPlaylistAndAddCurrentTrack()">
+          ➕ Buat Playlist Baru & Tambahkan Lagu
+        </button>
+        <div class="divider-text">atau pilih playlist yang ada:</div>
+        <ul id="playlistSelection" class="modal-playlist-list"></ul>
+      </div>
+      <div class="dialog-footer">
+        <button class="xp-btn" onclick="closePlaylistModal()">Batal</button>
+      </div>
     </div>
-</div>
-
-<div id="playlistModal" class="hidden">
-  <div class="modal-content">
-    <h3>Select Playlist</h3>
-
-    <ul id="playlistSelection"></ul>
-
-    <button onclick="closePlaylistModal()">
-      Cancel
-    </button>
   </div>
-</div>
-<div id="confirmModal" class="hidden">
-  <div class="modal-content">
-    <h3>Hapus Track?</h3>
-    <p id="confirmText">Apakah kamu yakin ingin menghapus lagu ini?</p>
 
-    <button id="confirmYes">Hapus</button>
-    <button onclick="closeConfirmModal()">Batal</button>
+  <!-- Modal Rename Playlist -->
+  <div id="renameModal" class="modal hidden">
+    <div class="xp-dialog">
+      <div class="dialog-header">
+        <span>✏️ Ubah Nama Playlist</span>
+        <button class="dialog-close" onclick="closeRenameModal()">✕</button>
+      </div>
+      <div class="dialog-body">
+        <p>Masukkan nama playlist baru:</p>
+        <input id="renameInput" placeholder="Nama playlist..." onkeydown="if(event.key==='Enter') submitRenamePlaylist()" />
+      </div>
+      <div class="dialog-footer">
+        <button class="xp-btn primary" onclick="submitRenamePlaylist()">Simpan</button>
+        <button class="xp-btn" onclick="closeRenameModal()">Batal</button>
+      </div>
+    </div>
   </div>
-</div>
 
-    <script src="renderer.js"></script>
-  </body>
+  <!-- Modal Confirm Delete -->
+  <div id="confirmModal" class="modal hidden">
+    <div class="xp-dialog">
+      <div class="dialog-header danger">
+        <span>⚠️ Konfirmasi Hapus</span>
+        <button class="dialog-close" onclick="closeConfirmModal()">✕</button>
+      </div>
+      <div class="dialog-body">
+        <p id="confirmText">Apakah kamu yakin ingin menghapus lagu ini?</p>
+      </div>
+      <div class="dialog-footer">
+        <button id="confirmYes" class="xp-btn danger">Hapus</button>
+        <button class="xp-btn" onclick="closeConfirmModal()">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
 </html>
