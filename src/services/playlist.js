@@ -14,16 +14,23 @@ function getPlaylists() {
 }
 
 function addTrackToPlaylist(playlistId, track) {
+  const trackId =
+    track.platform === "soundcloud"
+      ? track.url || track.id
+      : track.id || track.track_id;
+
   return db.prepare(`
     INSERT INTO playlist_tracks
-    (playlist_id, title, source, track_id, thumbnail)
-    VALUES (?, ?, ?, ?, ?)
+    (playlist_id, title, source, platform, track_id, thumbnail, duration)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
     playlistId,
     track.title,
     track.source,
-    track.id,
-    track.thumbnail
+    track.platform,
+    trackId,
+    track.thumbnail || null,
+    track.duration || null
   );
 }
 
@@ -41,10 +48,27 @@ function deleteTrack(trackId) {
   `).run(trackId);
 }
 
+function renamePlaylist(playlistId, name) {
+  return db.prepare(`
+    UPDATE playlists
+    SET name = ?
+    WHERE id = ?
+  `).run(name, playlistId);
+}
+
+function deletePlaylist(playlistId) {
+  return db.prepare(`
+    DELETE FROM playlists
+    WHERE id = ?
+  `).run(playlistId);
+}
+
 module.exports = {
   createPlaylist,
   getPlaylists,
   addTrackToPlaylist,
   getPlaylistTracks,
-  deleteTrack
+  deleteTrack,
+  renamePlaylist,
+  deletePlaylist
 };

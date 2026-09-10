@@ -3,8 +3,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("api", {
   searchAll: (q) => ipcRenderer.invoke("search-all", q),
 
-  getStream: (track) =>
-    ipcRenderer.invoke("get-stream", track),
+  getStream: (track, startTime = 0) =>
+    ipcRenderer.invoke("get-stream", track, startTime),
 
   createPlaylist: (name) =>
     ipcRenderer.invoke("create-playlist", name),
@@ -20,4 +20,14 @@ contextBridge.exposeInMainWorld("api", {
 
   deleteTrack: (trackId) =>
     ipcRenderer.invoke("delete-track", trackId),
+
+  renamePlaylist: (id, name) =>
+    ipcRenderer.invoke("rename-playlist", id, name),
+
+  deletePlaylist: (id) =>
+    ipcRenderer.invoke("delete-playlist", id),
+
+  minimizeWin: () => ipcRenderer.invoke("win-minimize"),
+  maximizeWin: () => ipcRenderer.invoke("win-maximize"),
+  closeWin: () => ipcRenderer.invoke("win-close"),
 });
