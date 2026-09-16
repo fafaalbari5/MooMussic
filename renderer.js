@@ -12,6 +12,10 @@ let trackDurationSec = 0;
 let loadToken = 0;
 let pendingPlay = null;
 
+let isShuffle = false;
+let repeatMode = 0; // 0 = Off, 1 = All, 2 = One
+let shuffledIndices = [];
+
 // =========================
 // DOM (HARUS di dalam window.onload)
 // =========================
@@ -42,6 +46,35 @@ window.onload = () => {
   bindPlayerEvents();
   bindVolumeEvents();
 
+  // Media Session Controls
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('play', togglePlay);
+    navigator.mediaSession.setActionHandler('pause', togglePlay);
+    navigator.mediaSession.setActionHandler('previoustrack', prevSong);
+    navigator.mediaSession.setActionHandler('nexttrack', nextSong);
+  }
+
+  // Keyboard Shortcuts
+  document.addEventListener("keydown", (e) => {
+    // Ignore if typing in input
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    
+    switch(e.code) {
+      case "Space":
+        e.preventDefault();
+        togglePlay();
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        if (audio && isPlaying) audio.currentTime += 5;
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        if (audio && isPlaying) audio.currentTime -= 5;
+        break;
+    }
+  });
+
   // expose global functions (IMPORTANT)
   window.togglePlay = togglePlay;
   window.toggleMute = toggleMute;
@@ -59,6 +92,8 @@ window.onload = () => {
   window.createPlaylistAndAddCurrentTrack = createPlaylistAndAddCurrentTrack;
   window.closePlaylistModal = closePlaylistModal;
   window.closeConfirmModal = closeConfirmModal;
+  window.toggleShuffle = toggleShuffle;
+  window.toggleRepeat = toggleRepeat;
 };
 
 // =========================
@@ -89,41 +124,54 @@ function showTab(tabName) {
 function bindVolumeEvents() {
   if (!volumeSlider || !audio) return;
 
+  const volUpSVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+  const volOffSVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>`;
+
   volumeSlider.addEventListener("input", () => {
     const val = parseInt(volumeSlider.value, 10);
     audio.volume = val / 100;
     if (volumeValue) volumeValue.textContent = `${val}%`;
-    if (muteBtn) muteBtn.textContent = val === 0 ? "🔇" : "🔊";
+    if (muteBtn) muteBtn.innerHTML = val === 0 ? volOffSVG : volUpSVG;
   });
 }
 
 function toggleMute() {
   if (!audio || !volumeSlider) return;
 
+  const volUpSVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+  const volOffSVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>`;
+
   if (audio.volume > 0) {
     lastVolume = volumeSlider.value > 0 ? volumeSlider.value : 80;
     audio.volume = 0;
     volumeSlider.value = 0;
     if (volumeValue) volumeValue.textContent = "0%";
-    if (muteBtn) muteBtn.textContent = "🔇";
+    if (muteBtn) muteBtn.innerHTML = volOffSVG;
   } else {
     const restoreVal = lastVolume > 0 ? lastVolume : 80;
     audio.volume = restoreVal / 100;
     volumeSlider.value = restoreVal;
     if (volumeValue) volumeValue.textContent = `${restoreVal}%`;
-    if (muteBtn) muteBtn.textContent = "🔊";
+    if (muteBtn) muteBtn.innerHTML = volUpSVG;
   }
 }
 
 function togglePlay() {
   if (!audio) return console.error("Audio not ready");
 
+  const iconPlay = document.getElementById("iconPlay");
+  const iconPause = document.getElementById("iconPause");
+
   if (audio.paused) {
     audio.play();
     isPlaying = true;
+    if (iconPlay) iconPlay.classList.add("hidden");
+    if (iconPause) iconPause.classList.remove("hidden");
   } else {
     audio.pause();
     isPlaying = false;
+    if (iconPlay) iconPlay.classList.remove("hidden");
+    if (iconPause) iconPause.classList.add("hidden");
   }
 }
 
@@ -178,6 +226,22 @@ function bindPlayerEvents() {
   audio.onended = () => {
     nextSong();
   };
+
+  audio.addEventListener("play", () => {
+    isPlaying = true;
+    const iconPlay = document.getElementById("iconPlay");
+    const iconPause = document.getElementById("iconPause");
+    if (iconPlay) iconPlay.classList.add("hidden");
+    if (iconPause) iconPause.classList.remove("hidden");
+  });
+
+  audio.addEventListener("pause", () => {
+    isPlaying = false;
+    const iconPlay = document.getElementById("iconPlay");
+    const iconPause = document.getElementById("iconPause");
+    if (iconPlay) iconPlay.classList.remove("hidden");
+    if (iconPause) iconPause.classList.add("hidden");
+  });
 
   progress.addEventListener("input", () => {
     isSeeking = true;
@@ -248,12 +312,18 @@ function isIgnorablePlayError(err) {
   if (!err) return true;
   if (err.name === "AbortError") return true;
 
-  const msg = err.message || "";
-  return (
-    msg.includes("interrupted") ||
-    msg.includes("aborted") ||
-    msg.includes("cancelled")
-  );
+  if (
+    err.message?.includes("The play() request was interrupted") ||
+    err.message?.includes("The fetching process for the media resource was aborted") ||
+    err.message?.includes("PIPELINE_ERROR_ABORT") ||
+    err.message?.includes("Failed to load because no supported source was found") ||
+    err.message?.includes("net::ERR_ABORTED") ||
+    err.message?.includes("fetch stream failed")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 function waitForCanPlay(audioEl, token, timeoutMs = 45000) {
@@ -304,8 +374,11 @@ function waitForCanPlay(audioEl, token, timeoutMs = 45000) {
   });
 }
 
+// =========================
+// UI UPDATES
+// =========================
 function updateNowPlayingUI(track, statusText) {
-  const defaultArt = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%231565c0'/><text x='50%' y='55%' font-size='48' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff'>🎵</text></svg>";
+  const defaultArt = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%231565c0'/><path d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' fill='%23ffffff' transform='translate(36, 36) scale(2)'/></svg>";
   const thumb = track?.thumbnail || defaultArt;
   const title = track?.title ? `${statusText}: ${track.title}` : "Belum ada lagu";
   const platform = track?.source || track?.platform || "-";
@@ -321,6 +394,14 @@ function updateNowPlayingUI(track, statusText) {
   if (cardTitle) cardTitle.textContent = track?.title || "Belum ada lagu";
   if (cardPlatform) cardPlatform.textContent = platform;
   if (nowPlayingEl) nowPlayingEl.textContent = title;
+
+  if ('mediaSession' in navigator && track) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: platform,
+      artwork: [{ src: thumb, sizes: '512x512', type: 'image/png' }]
+    });
+  }
 }
 
 // =========================
@@ -414,7 +495,7 @@ async function search() {
 
       const thumbImg = document.createElement("img");
       thumbImg.className = "track-thumb";
-      thumbImg.src = track.thumbnail || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'><rect width='44' height='44' fill='%231565c0'/><text x='50%' y='55%' font-size='22' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff'>🎵</text></svg>";
+      thumbImg.src = track.thumbnail || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'><rect width='44' height='44' fill='%231565c0'/><path d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' fill='%23ffffff' transform='translate(10, 10) scale(1)'/></svg>";
       thumbImg.alt = "Thumb";
 
       const detailsDiv = document.createElement("div");
@@ -454,6 +535,20 @@ async function search() {
       const actionsDiv = document.createElement("div");
       actionsDiv.className = "track-actions";
 
+      const playBtn = document.createElement("button");
+      playBtn.className = "xp-btn primary";
+      playBtn.textContent = "▶";
+      playBtn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+          await playTrack(track, 0);
+        } catch (err) {
+          console.error(err);
+          alert("Gagal memutar lagu: " + err.message);
+          updateNowPlayingUI(null, "Now Playing");
+        }
+      };
+
       const addBtn = document.createElement("button");
       addBtn.className = "xp-btn";
       addBtn.textContent = "➕ Playlist";
@@ -463,6 +558,7 @@ async function search() {
         openPlaylistModal();
       };
 
+      actionsDiv.appendChild(playBtn);
       actionsDiv.appendChild(addBtn);
 
       li.appendChild(thumbImg);
@@ -522,7 +618,7 @@ async function loadPlaylists() {
 
     const iconSpan = document.createElement("span");
     iconSpan.className = "playlist-icon";
-    iconSpan.textContent = "🎵";
+    iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "playlist-name-text";
@@ -537,13 +633,14 @@ async function loadPlaylists() {
       document.querySelectorAll("#playlists li").forEach((el) => el.classList.remove("active"));
       li.classList.add("active");
     };
-
     ul.appendChild(li);
   });
 }
 
 async function openPlaylist(id, name) {
   selectedPlaylistId = id;
+  await loadPlaylists();
+
   currentPlaylist = await window.api.getPlaylistTracks(id);
   currentIndex = 0;
 
@@ -565,7 +662,7 @@ function playCurrentPlaylistAll() {
     alert("Playlist ini tidak memiliki lagu.");
     return;
   }
-  playFromPlaylist(0);
+  playFromPlaylist(0, true);
 }
 
 function openRenameModal() {
@@ -595,30 +692,28 @@ async function submitRenamePlaylist() {
 
   const titleEl = document.getElementById("selectedPlaylistTitle");
   if (titleEl) titleEl.textContent = newName;
-
   await loadPlaylists();
 }
 
 async function deleteCurrentPlaylist() {
   if (!selectedPlaylistId) return;
-  const titleEl = document.getElementById("selectedPlaylistTitle");
-  const currentName = titleEl ? titleEl.textContent : "playlist ini";
 
-  if (!confirm(`Apakah Anda yakin ingin menghapus "${currentName}"?`)) return;
+  if (confirm("Apakah kamu yakin ingin menghapus playlist ini secara permanen?")) {
+    await window.api.deletePlaylist(selectedPlaylistId);
+    selectedPlaylistId = null;
+    currentPlaylist = [];
+    document.getElementById("playlistActions")?.classList.add("hidden");
+    await loadPlaylists();
 
-  await window.api.deletePlaylist(selectedPlaylistId);
-  selectedPlaylistId = null;
+    const tracksUl = document.getElementById("playlistTracks");
+    if (tracksUl) tracksUl.innerHTML = "<li class='empty-state'>Pilih playlist di menu samping.</li>";
 
-  document.getElementById("playlistActions")?.classList.add("hidden");
-  if (titleEl) titleEl.textContent = "Pilih Playlist";
+    const titleEl = document.getElementById("selectedPlaylistTitle");
+    if (titleEl) titleEl.textContent = "Pilih Playlist";
 
-  const countEl = document.getElementById("heroTrackCount");
-  if (countEl) countEl.textContent = "Pilih playlist di sidebar untuk melihat lagu";
-
-  const ul = document.getElementById("playlistTracks");
-  if (ul) ul.innerHTML = "<li class='empty-state'>Pilih playlist di sebelah kiri untuk melihat daftar lagu.</li>";
-
-  await loadPlaylists();
+    const countEl = document.getElementById("heroTrackCount");
+    if (countEl) countEl.textContent = "0 lagu";
+  }
 }
 
 async function createPlaylistAndAddCurrentTrack() {
@@ -631,9 +726,9 @@ async function createPlaylistAndAddCurrentTrack() {
   const res = await window.api.createPlaylist(defaultName);
   if (res && res.lastInsertRowid) {
     await window.api.addTrack(res.lastInsertRowid, selectedTrackForPlaylist);
-    closePlaylistModal();
-    alert(`Playlist "${defaultName}" berhasil dibuat dan lagu telah ditambahkan!`);
+    alert(`Sukses membuat "${defaultName}" dan menambahkan lagu.`);
     await loadPlaylists();
+    closePlaylistModal();
   }
 }
 
@@ -656,7 +751,7 @@ function renderPlaylistTracks() {
 
     const thumbImg = document.createElement("img");
     thumbImg.className = "track-thumb";
-    thumbImg.src = track.thumbnail || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'><rect width='44' height='44' fill='%231565c0'/><text x='50%' y='55%' font-size='22' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff'>🎵</text></svg>";
+    thumbImg.src = track.thumbnail || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'><rect width='44' height='44' fill='%231565c0'/><path d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' fill='%23ffffff' transform='translate(10, 10) scale(1)'/></svg>";
     thumbImg.alt = "Thumb";
 
     const detailsDiv = document.createElement("div");
@@ -683,7 +778,7 @@ function renderPlaylistTracks() {
     detailsDiv.appendChild(titleSpan);
     detailsDiv.appendChild(metaRow);
 
-    detailsDiv.onclick = () => playFromPlaylist(index);
+    detailsDiv.onclick = () => playFromPlaylist(index, true);
 
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "track-actions";
@@ -693,12 +788,12 @@ function renderPlaylistTracks() {
     playBtn.textContent = "▶";
     playBtn.onclick = (e) => {
       e.stopPropagation();
-      playFromPlaylist(index);
+      playFromPlaylist(index, true);
     };
 
     const delBtn = document.createElement("button");
     delBtn.className = "xp-btn danger";
-    delBtn.textContent = "❌";
+    delBtn.textContent = "🗑 Hapus";
     delBtn.onclick = (e) => {
       e.stopPropagation();
       openConfirmModal(track);
@@ -719,8 +814,23 @@ function renderPlaylistTracks() {
 // =========================
 // PLAY QUEUE
 // =========================
-async function playFromPlaylist(index) {
+async function playFromPlaylist(index, isUserInteraction = false) {
   currentIndex = index;
+
+  if (isUserInteraction && isShuffle && currentPlaylist.length > 0) {
+    if (shuffledIndices.length === 0) {
+      shuffledIndices = Array.from({length: currentPlaylist.length}, (_, i) => i);
+      for (let i = shuffledIndices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledIndices[i], shuffledIndices[j]] = [shuffledIndices[j], shuffledIndices[i]];
+      }
+    }
+    const currentIdxPos = shuffledIndices.indexOf(currentIndex);
+    if (currentIdxPos > -1) {
+      shuffledIndices.splice(currentIdxPos, 1);
+      shuffledIndices.unshift(currentIndex);
+    }
+  }
 
   const track = currentPlaylist[index];
 
@@ -738,15 +848,102 @@ async function playFromPlaylist(index) {
   }
 }
 
+// =========================
+// SHUFFLE & REPEAT
+// =========================
+function toggleShuffle() {
+  isShuffle = !isShuffle;
+  const btn = document.getElementById("btnShuffle");
+  if (btn) btn.classList.toggle("active-state", isShuffle);
+  
+  if (isShuffle && currentPlaylist.length > 0) {
+    shuffledIndices = Array.from({length: currentPlaylist.length}, (_, i) => i);
+    for (let i = shuffledIndices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledIndices[i], shuffledIndices[j]] = [shuffledIndices[j], shuffledIndices[i]];
+    }
+    const currentIdxPos = shuffledIndices.indexOf(currentIndex);
+    if (currentIdxPos > -1) {
+      shuffledIndices.splice(currentIdxPos, 1);
+      shuffledIndices.unshift(currentIndex);
+    }
+  }
+}
+
+function toggleRepeat() {
+  repeatMode = (repeatMode + 1) % 3;
+  const btn = document.getElementById("btnRepeat");
+  const iconAll = document.getElementById("iconRepeatAll");
+  const iconOne = document.getElementById("iconRepeatOne");
+  if (!btn || !iconAll || !iconOne) return;
+  
+  if (repeatMode === 0) {
+    btn.classList.remove("active-state");
+    iconAll.classList.remove("hidden");
+    iconOne.classList.add("hidden");
+    btn.title = "Ulangi (Mati)";
+  } else if (repeatMode === 1) {
+    btn.classList.add("active-state");
+    iconAll.classList.remove("hidden");
+    iconOne.classList.add("hidden");
+    btn.title = "Ulangi Semua";
+  } else if (repeatMode === 2) {
+    btn.classList.add("active-state");
+    iconAll.classList.add("hidden");
+    iconOne.classList.remove("hidden");
+    btn.title = "Ulangi Satu";
+  }
+}
+
 function nextSong() {
-  if (currentIndex < currentPlaylist.length - 1) {
-    playFromPlaylist(currentIndex + 1);
+  if (currentPlaylist.length === 0) return;
+  
+  if (repeatMode === 2) {
+    playFromPlaylist(currentIndex);
+    return;
+  }
+  
+  if (isShuffle) {
+    let currentShuffledIdx = shuffledIndices.indexOf(currentIndex);
+    if (currentShuffledIdx === -1 || currentShuffledIdx === shuffledIndices.length - 1) {
+      if (repeatMode === 1) {
+        toggleShuffle();
+        toggleShuffle(); 
+        playFromPlaylist(shuffledIndices[0]);
+      }
+    } else {
+      playFromPlaylist(shuffledIndices[currentShuffledIdx + 1]);
+    }
+  } else {
+    if (currentIndex >= currentPlaylist.length - 1) {
+      if (repeatMode === 1) playFromPlaylist(0);
+    } else {
+      playFromPlaylist(currentIndex + 1);
+    }
   }
 }
 
 function prevSong() {
-  if (currentIndex > 0) {
-    playFromPlaylist(currentIndex - 1);
+  if (currentPlaylist.length === 0) return;
+  
+  if (audio && audio.currentTime > 3) {
+    audio.currentTime = 0;
+    return;
+  }
+  
+  if (isShuffle) {
+    let currentShuffledIdx = shuffledIndices.indexOf(currentIndex);
+    if (currentShuffledIdx > 0) {
+      playFromPlaylist(shuffledIndices[currentShuffledIdx - 1]);
+    } else if (repeatMode === 1) {
+      playFromPlaylist(shuffledIndices[shuffledIndices.length - 1]);
+    }
+  } else {
+    if (currentIndex > 0) {
+      playFromPlaylist(currentIndex - 1);
+    } else if (repeatMode === 1) {
+      playFromPlaylist(currentPlaylist.length - 1);
+    }
   }
 }
 
