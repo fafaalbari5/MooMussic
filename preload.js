@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld("api", {
   deletePlaylist: (id) =>
     ipcRenderer.invoke("delete-playlist", id),
 
+  toggleMiniPlayer: (isMini) => 
+    ipcRenderer.send("toggle-mini-player", isMini),
+
   minimizeWin: () => ipcRenderer.invoke("win-minimize"),
   maximizeWin: () => ipcRenderer.invoke("win-maximize"),
   closeWin: () => ipcRenderer.invoke("win-close"),

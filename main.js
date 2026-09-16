@@ -6,6 +6,9 @@ const playlist = require("./src/services/playlist");
 const player = require("./src/services/playerservices");
 const streamService = require("./src/services/streamService");
 
+// Matikan peringatan keamanan Electron di DevTools (karena kita butuh webSecurity: false untuk streaming)
+process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
+
 app.commandLine.appendSwitch("ignore-certificate-errors");
 app.commandLine.appendSwitch("allow-insecure-localhost");
 
@@ -87,6 +90,29 @@ function registerIpc() {
   ipcMain.handle("delete-playlist", (_, id) =>
     playlist.deletePlaylist(id)
   );
+
+  // Mini player
+  let normalBounds = null;
+  ipcMain.on("toggle-mini-player", (e, isMini) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return;
+    if (isMini) {
+      normalBounds = win.getBounds();
+      win.setMinimumSize(300, 100);
+      win.setSize(400, 220);
+      win.setAlwaysOnTop(true);
+      win.setMenuBarVisibility(false);
+    } else {
+      if (normalBounds) {
+        win.setBounds(normalBounds);
+      } else {
+        win.setSize(1000, 700);
+      }
+      win.setMinimumSize(800, 600);
+      win.setAlwaysOnTop(false);
+      win.setMenuBarVisibility(true);
+    }
+  });
 
   ipcMain.handle("win-minimize", (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
