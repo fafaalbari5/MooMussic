@@ -715,6 +715,51 @@ async function loadPlaylists() {
       document.querySelectorAll("#playlists li").forEach((el) => el.classList.remove("active"));
       li.classList.add("active");
     };
+
+    li.draggable = true;
+    li.ondragstart = (e) => {
+      e.dataTransfer.setData('text/plain', i);
+      e.dataTransfer.setData('type', 'playlist');
+      li.style.opacity = '0.5';
+    };
+    li.ondragend = (e) => {
+      li.style.opacity = '1';
+    };
+    li.ondragover = (e) => {
+      e.preventDefault();
+      li.style.borderTop = "2px dashed #1565c0";
+    };
+    li.ondragleave = (e) => {
+      li.style.borderTop = "";
+    };
+    li.ondrop = async (e) => {
+      e.preventDefault();
+      li.style.borderTop = "";
+      const type = e.dataTransfer.getData('type');
+      if (type !== 'playlist') return;
+      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      const toIdx = i;
+      if (fromIdx === toIdx) return;
+      
+      const track = currentPlaylist.splice(fromIdx, 1)[0];
+      currentPlaylist.splice(toIdx, 0, track);
+      
+      // Update DB
+      const trackIds = currentPlaylist.map(t => t.id);
+      await window.api.reorderPlaylistTracks(selectedPlaylistId, trackIds);
+      
+      // Update currentIndex if needed
+      if (currentIndex === fromIdx) {
+        currentIndex = toIdx;
+      } else if (currentIndex > fromIdx && currentIndex <= toIdx) {
+        currentIndex--;
+      } else if (currentIndex < fromIdx && currentIndex >= toIdx) {
+        currentIndex++;
+      }
+      
+      renderPlaylistTracks();
+    };
+
     ul.appendChild(li);
   });
 }
@@ -883,6 +928,48 @@ function renderPlaylistTracks() {
 
     actionsDiv.appendChild(playBtn);
     actionsDiv.appendChild(delBtn);
+
+    li.draggable = true;
+    li.ondragstart = (e) => {
+      e.dataTransfer.setData("text/plain", index);
+      e.dataTransfer.setData("type", "playlist");
+      li.style.opacity = "0.5";
+    };
+    li.ondragend = (e) => {
+      li.style.opacity = "1";
+    };
+    li.ondragover = (e) => {
+      e.preventDefault();
+      li.style.borderTop = "2px dashed #1565c0";
+    };
+    li.ondragleave = (e) => {
+      li.style.borderTop = "";
+    };
+    li.ondrop = async (e) => {
+      e.preventDefault();
+      li.style.borderTop = "";
+      const type = e.dataTransfer.getData("type");
+      if (type !== "playlist") return;
+      const fromIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+      const toIdx = index;
+      if (fromIdx === toIdx) return;
+      
+      const track = currentPlaylist.splice(fromIdx, 1)[0];
+      currentPlaylist.splice(toIdx, 0, track);
+      
+      const trackIds = currentPlaylist.map(t => t.id);
+      await window.api.reorderPlaylistTracks(selectedPlaylistId, trackIds);
+      
+      if (currentIndex === fromIdx) {
+        currentIndex = toIdx;
+      } else if (currentIndex > fromIdx && currentIndex <= toIdx) {
+        currentIndex--;
+      } else if (currentIndex < fromIdx && currentIndex >= toIdx) {
+        currentIndex++;
+      }
+      
+      renderPlaylistTracks();
+    };
 
     li.appendChild(thumbImg);
     li.appendChild(detailsDiv);
@@ -1169,6 +1256,38 @@ function renderQueue() {
     li.appendChild(thumbImg);
     li.appendChild(detailsDiv);
     li.appendChild(actionsDiv);
+
+    li.draggable = true;
+    li.ondragstart = (e) => {
+      e.dataTransfer.setData('text/plain', i);
+      e.dataTransfer.setData('type', 'queue');
+      li.style.opacity = '0.5';
+    };
+    li.ondragend = (e) => {
+      li.style.opacity = '1';
+    };
+    li.ondragover = (e) => {
+      e.preventDefault();
+      li.style.borderTop = "2px dashed #fbc02d";
+    };
+    li.ondragleave = (e) => {
+      li.style.borderTop = "";
+    };
+    li.ondrop = (e) => {
+      e.preventDefault();
+      li.style.borderTop = "";
+      const type = e.dataTransfer.getData('type');
+      if (type !== 'queue') return;
+      const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      const toIdx = i;
+      if (fromIdx === toIdx) return;
+      
+      const track = manualQueue.splice(fromIdx, 1)[0];
+      manualQueue.splice(toIdx, 0, track);
+      
+      renderQueue();
+    };
+
     ul.appendChild(li);
   });
 
@@ -1229,11 +1348,68 @@ function renderQueue() {
     playBtn.innerHTML = "<svg viewBox=\'0 0 24 24\' width=\'16\' height=\'16\' fill=\'currentColor\' style=\'vertical-align: middle;\'><path d=\'M8 5v14l11-7z\'/></svg>";
     playBtn.onclick = (e) => { e.stopPropagation(); playFromPlaylist(idx, true); };
     actionsDiv.appendChild(playBtn);
+
+    li.draggable = true;
+    li.ondragstart = (e) => {
+      e.dataTransfer.setData("text/plain", idx);
+      e.dataTransfer.setData("type", "upcoming");
+      li.style.opacity = "0.5";
+    };
+    li.ondragend = (e) => {
+      li.style.opacity = "1";
+    };
+    li.ondragover = (e) => {
+      e.preventDefault();
+      li.style.borderTop = "2px dashed #1565c0";
+    };
+    li.ondragleave = (e) => {
+      li.style.borderTop = "";
+    };
+    li.ondrop = async (e) => {
+      e.preventDefault();
+      li.style.borderTop = "";
+      const type = e.dataTransfer.getData("type");
+      if (type !== "upcoming") return;
+      
+      const fromIdx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+      const toIdx = idx;
+      if (fromIdx === toIdx) return;
+
+      if (isShuffle) {
+        // Reorder shuffledIndices
+        const fromPos = shuffledIndices.indexOf(fromIdx);
+        const toPos = shuffledIndices.indexOf(toIdx);
+        if (fromPos > -1 && toPos > -1) {
+          const val = shuffledIndices.splice(fromPos, 1)[0];
+          shuffledIndices.splice(toPos, 0, val);
+        }
+      } else {
+        // Reorder currentPlaylist
+        const track = currentPlaylist.splice(fromIdx, 1)[0];
+        currentPlaylist.splice(toIdx, 0, track);
+        
+        // Update DB
+        const trackIds = currentPlaylist.map(t => t.id);
+        await window.api.reorderPlaylistTracks(selectedPlaylistId, trackIds);
+        
+        if (currentIndex === fromIdx) {
+          currentIndex = toIdx;
+        } else if (currentIndex > fromIdx && currentIndex <= toIdx) {
+          currentIndex--;
+        } else if (currentIndex < fromIdx && currentIndex >= toIdx) {
+          currentIndex++;
+        }
+      }
+      
+      renderQueue();
+    };
+
     li.appendChild(thumbImg);
     li.appendChild(detailsDiv);
     li.appendChild(actionsDiv);
     ul.appendChild(li);
   });
+
 }
 
 window.addToQueue = function(track) {
