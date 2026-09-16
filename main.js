@@ -80,6 +80,10 @@ function registerIpc() {
   ipcMain.handle("get-playlist-tracks", (_, id) =>
     playlist.getPlaylistTracks(id)
   );
+  
+  ipcMain.handle("reorder-playlist-tracks", (_, id, trackIds) =>
+    playlist.reorderPlaylistTracks(id, trackIds)
+  );
 
   ipcMain.handle("delete-track", (_, id) => playlist.deleteTrack(id));
 

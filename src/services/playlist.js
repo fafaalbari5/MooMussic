@@ -38,7 +38,26 @@ function getPlaylistTracks(playlistId) {
   return db.prepare(`
     SELECT * FROM playlist_tracks
     WHERE playlist_id = ?
+    ORDER BY order_seq ASC, id ASC
   `).all(playlistId);
+}
+
+function reorderPlaylistTracks(playlistId, trackIds) {
+  const stmt = db.prepare(`
+    UPDATE playlist_tracks
+    SET order_seq = ?
+    WHERE id = ? AND playlist_id = ?
+  `);
+  const transaction = db.exec('BEGIN TRANSACTION');
+  try {
+    trackIds.forEach((id, index) => {
+      stmt.run(index, id, playlistId);
+    });
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
 }
 
 function deleteTrack(trackId) {
@@ -68,6 +87,7 @@ module.exports = {
   getPlaylists,
   addTrackToPlaylist,
   getPlaylistTracks,
+  reorderPlaylistTracks,
   deleteTrack,
   renamePlaylist,
   deletePlaylist

@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld("api", {
   getPlaylistTracks: (playlistId) =>
     ipcRenderer.invoke("get-playlist-tracks", playlistId),
 
+  reorderPlaylistTracks: (playlistId, trackIds) =>
+    ipcRenderer.invoke("reorder-playlist-tracks", playlistId, trackIds),
+
   deleteTrack: (trackId) =>
     ipcRenderer.invoke("delete-track", trackId),
 

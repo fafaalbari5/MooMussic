@@ -74,6 +74,12 @@ function getDb() {
     } catch {
       // column already exists
     }
+
+    try {
+      db.exec(`ALTER TABLE playlist_tracks ADD COLUMN order_seq INTEGER DEFAULT 0`);
+    } catch {
+      // column already exists
+    }
   }
   return db;
 }
