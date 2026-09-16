@@ -20,14 +20,14 @@
       <!-- Sidebar Nav -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h2>Menu Utama</h2>
-        </div>
+        <h2 class="app-logo">MooMussic <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="vertical-align: middle;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></h2>
+      </div>
         <nav class="nav-menu">
           <button class="nav-btn active" id="navSearch" onclick="showTab('search')">
-            <span class="icon">🔍</span> Cari Musik
+            <span class="icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></span> Cari Musik
           </button>
           <button class="nav-btn" id="navPlaylist" onclick="showTab('playlist')">
-            <span class="icon">📁</span> Koleksi Playlist
+            <span class="icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></span> Koleksi Playlist
           </button>
         </nav>
 
@@ -35,7 +35,7 @@
         <div class="sidebar-library">
           <div class="library-header">
             <span>Daftar Playlist</span>
-            <button class="icon-add-btn" onclick="createPlaylistInstant()" title="Buat Playlist Baru Instant">➕</button>
+            <button class="icon-add-btn" onclick="createPlaylistInstant()" title="Buat Playlist Baru Instant"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
           </div>
           <ul id="playlists" class="sidebar-playlist-list">
             <li class="empty-state">Belum ada playlist</li>
@@ -46,7 +46,7 @@
         <div class="now-playing-card">
           <div class="card-header">Lagu Diputar</div>
           <div class="card-body">
-            <img id="cardArt" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%231565c0'/><text x='50%' y='55%' font-size='48' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff'>🎵</text></svg>" alt="Album Art" />
+            <img id="cardArt" class="card-art" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%231565c0'/><path d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' fill='%23ffffff' transform='translate(36, 36) scale(2)'/></svg>" alt="Album Art" />
             <div id="cardTitle" class="card-title">Belum ada lagu</div>
             <div id="cardPlatform" class="card-platform">-</div>
           </div>
@@ -65,7 +65,7 @@
           <div class="search-box-container">
             <input id="search" placeholder="Ketik nama lagu, penyanyi, atau judul..." onkeydown="if(event.key==='Enter') search()" />
             <button class="xp-btn primary" onclick="search()">
-              🔍 Cari
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Cari
             </button>
           </div>
 
@@ -78,15 +78,21 @@
         <!-- Playlist View Tab (Spotify Hero Style) -->
         <section id="playlistView" class="tab-view hidden">
           <div class="spotify-hero-card">
-            <div class="hero-cover">🎵</div>
+            <div class="hero-cover"><svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
             <div class="hero-info">
               <span class="hero-badge">PLAYLIST</span>
               <h1 id="selectedPlaylistTitle" class="hero-title" onclick="openRenameModal()" title="Klik untuk mengubah nama playlist">Pilih Playlist</h1>
               <div id="heroTrackCount" class="hero-meta">Pilih playlist di sidebar untuk melihat lagu</div>
               <div id="playlistActions" class="playlist-action-btns hidden">
-                <button class="xp-btn primary" onclick="playCurrentPlaylistAll()" title="Putar semua lagu">▶ Putar Semua</button>
-                <button class="xp-btn" onclick="openRenameModal()" title="Ubah Nama Playlist">✏️ Ubah Nama</button>
-                <button class="xp-btn danger" onclick="deleteCurrentPlaylist()" title="Hapus Playlist">🗑️ Hapus</button>
+                <button class="xp-btn primary" onclick="playCurrentPlaylistAll()" title="Putar semua lagu">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M8 5v14l11-7z"/></svg>Putar Semua
+                </button>
+                <button class="xp-btn" onclick="openRenameModal()" title="Ubah Nama Playlist">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Ubah Nama
+                </button>
+                <button class="xp-btn danger" onclick="deleteCurrentPlaylist()" title="Hapus Playlist">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Hapus
+                </button>
               </div>
             </div>
           </div>
@@ -104,7 +110,7 @@
     <footer id="playerBar">
       <!-- Left Track Info -->
       <div class="player-left">
-        <img id="playerAlbumArt" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'><rect width='50' height='50' fill='%230d47a1'/><text x='50%' y='55%' font-size='24' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff'>🎵</text></svg>" alt="Art" />
+        <img id="playerAlbumArt" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'><rect width='50' height='50' fill='%230d47a1'/><path d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' fill='%23ffffff' transform='translate(13, 13) scale(1)'/></svg>" alt="Art" />
         <div class="track-info-text">
           <div id="nowPlaying" class="track-title-now">Now Playing: -</div>
         </div>
@@ -113,9 +119,23 @@
       <!-- Center Controls -->
       <div class="player-center">
         <div class="player-buttons">
-          <button class="control-btn" onclick="prevSong()" title="Lagu Sebelumnya">⏮</button>
-          <button class="control-btn play-main" onclick="togglePlay()" title="Putar / Jeda">⏯</button>
-          <button class="control-btn" onclick="nextSong()" title="Lagu Berikutnya">⏭</button>
+          <button class="control-btn small-btn" id="btnShuffle" onclick="toggleShuffle()" title="Acak (Shuffle)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10.59,9.17L5.41,4L4,5.41l5.17,5.17L10.59,9.17z M14.5,4l2.04,2.04L4,18.59L5.41,20l12.54-12.54L20,9.5V4H14.5z M14.83,13.41l-1.41,1.41l3.13,3.13L14.5,20H20v-5.5l-2.04,2.04L14.83,13.41z"/></svg>
+          </button>
+          <button class="control-btn" onclick="prevSong()" title="Lagu Sebelumnya">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6,6h2v12H6V6z M9.5,12l8.5,6V6L9.5,12z"/></svg>
+          </button>
+          <button class="control-btn play-main" id="btnPlayPause" onclick="togglePlay()" title="Putar / Jeda">
+            <svg id="iconPlay" viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M8,5v14l11-7L8,5z"/></svg>
+            <svg id="iconPause" viewBox="0 0 24 24" width="24" height="24" fill="currentColor" class="hidden"><path d="M6,19h4V5H6V19z M14,5v14h4V5H14z"/></svg>
+          </button>
+          <button class="control-btn" onclick="nextSong()" title="Lagu Berikutnya">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6,18l8.5-6L6,6V18z M16,6v12h2V6H16z"/></svg>
+          </button>
+          <button class="control-btn small-btn" id="btnRepeat" onclick="toggleRepeat()" title="Ulangi (Repeat)">
+            <svg id="iconRepeatAll" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7,7h10v3l4-4l-4-4v3H5v6h2V7z M17,17H7v-3l-4,4l4,4v-3h12v-6h-2V17z"/></svg>
+            <svg id="iconRepeatOne" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="hidden"><path d="M7,7h10v3l4-4l-4-4v3H5v6h2V7z M17,17H7v-3l-4,4l4,4v-3h12v-6h-2V17z M13,15V9h-1l-2,1v1h1.5v4H13z"/></svg>
+          </button>
         </div>
 
         <div class="progress-container">
@@ -127,7 +147,9 @@
       <!-- Right Volume Controls -->
       <div class="player-right">
         <div id="volumeControl">
-          <span id="muteBtn" onclick="toggleMute()" title="Mute / Unmute">🔊</span>
+          <span id="muteBtn" onclick="toggleMute()" title="Mute / Unmute">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          </span>
           <input type="range" id="volume" min="0" max="100" value="80" />
           <span id="volumeValue">80%</span>
         </div>
@@ -141,12 +163,12 @@
   <div id="playlistModal" class="modal hidden">
     <div class="xp-dialog">
       <div class="dialog-header">
-        <span>➕ Tambahkan ke Playlist</span>
-        <button class="dialog-close" onclick="closePlaylistModal()">✕</button>
+        <span><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Tambahkan ke Playlist</span>
+        <button class="dialog-close" onclick="closePlaylistModal()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
       </div>
       <div class="dialog-body">
         <button class="xp-btn primary full-width" onclick="createPlaylistAndAddCurrentTrack()">
-          ➕ Buat Playlist Baru & Tambahkan Lagu
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Buat Playlist Baru & Tambahkan Lagu
         </button>
         <div class="divider-text">atau pilih playlist yang ada:</div>
         <ul id="playlistSelection" class="modal-playlist-list"></ul>
@@ -161,8 +183,8 @@
   <div id="renameModal" class="modal hidden">
     <div class="xp-dialog">
       <div class="dialog-header">
-        <span>✏️ Ubah Nama Playlist</span>
-        <button class="dialog-close" onclick="closeRenameModal()">✕</button>
+        <span><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Ubah Nama Playlist</span>
+        <button class="dialog-close" onclick="closeRenameModal()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
       </div>
       <div class="dialog-body">
         <p>Masukkan nama playlist baru:</p>
@@ -179,8 +201,8 @@
   <div id="confirmModal" class="modal hidden">
     <div class="xp-dialog">
       <div class="dialog-header danger">
-        <span>⚠️ Konfirmasi Hapus</span>
-        <button class="dialog-close" onclick="closeConfirmModal()">✕</button>
+        <span><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>Konfirmasi Hapus</span>
+        <button class="dialog-close" onclick="closeConfirmModal()"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
       </div>
       <div class="dialog-body">
         <p id="confirmText">Apakah kamu yakin ingin menghapus lagu ini?</p>
