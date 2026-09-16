@@ -145,3 +145,9 @@ vite.config.ts.timestamp-*
 # db file ignore
 moomuss.db
 
+# play-dl and youtube scripts
+*-player-script.js
+.data/
+
+# Environment files
+.env
