@@ -91,6 +91,29 @@ function registerIpc() {
     playlist.deletePlaylist(id)
   );
 
+  // Mini player
+  let normalBounds = null;
+  ipcMain.on("toggle-mini-player", (e, isMini) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return;
+    if (isMini) {
+      normalBounds = win.getBounds();
+      win.setMinimumSize(300, 100);
+      win.setSize(400, 220);
+      win.setAlwaysOnTop(true);
+      win.setMenuBarVisibility(false);
+    } else {
+      if (normalBounds) {
+        win.setBounds(normalBounds);
+      } else {
+        win.setSize(1000, 700);
+      }
+      win.setMinimumSize(800, 600);
+      win.setAlwaysOnTop(false);
+      win.setMenuBarVisibility(true);
+    }
+  });
+
   ipcMain.handle("win-minimize", (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.minimize();

@@ -773,4 +773,50 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}/* Mini Player Mode */
+body.mini-player-active .sidebar,
+body.mini-player-active .main-content {
+  display: none !important;
+}
+
+body.mini-player-active .app-container {
+  flex-direction: column;
+}
+
+body.mini-player-active #playerBar {
+  height: 100vh;
+  flex-direction: column;
+  padding: 10px;
+  justify-content: space-around;
+  background: linear-gradient(to bottom, #1976d2 0%, #0d47a1 100%);
+}
+
+body.mini-player-active .player-left,
+body.mini-player-active .player-center,
+body.mini-player-active .player-right {
+  width: 100%;
+  justify-content: center;
+}
+
+body.mini-player-active #playerAlbumArt {
+  width: 60px;
+  height: 60px;
+  margin-right: 15px;
+}
+
+body.mini-player-active .track-title-now {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+body.mini-player-active #volumeControl {
+  display: none;
+}
+
+/* Hide internal title bar in Mini Player */
+body.mini-player-active .title-bar {
+  display: none !important;
 }
