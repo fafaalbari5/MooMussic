@@ -6,6 +6,9 @@ const playlist = require("./src/services/playlist");
 const player = require("./src/services/playerservices");
 const streamService = require("./src/services/streamService");
 
+// Matikan peringatan keamanan Electron di DevTools (karena kita butuh webSecurity: false untuk streaming)
+process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
+
 app.commandLine.appendSwitch("ignore-certificate-errors");
 app.commandLine.appendSwitch("allow-insecure-localhost");
 
