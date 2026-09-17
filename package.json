@@ -4,13 +4,16 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "build": "electron-builder --win"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^42.4.1"
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "acorn": "^8.18.0",
@@ -20,5 +23,23 @@
     "play-dl": "^1.9.7",
     "yt-dlp-wrap": "^2.3.12",
     "yt-search": "^2.13.1"
+  },
+  "build": {
+    "appId": "com.moomussic.app",
+    "productName": "MooMussic",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**/*"
+    ]
   }
 }

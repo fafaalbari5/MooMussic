@@ -5,7 +5,8 @@ const { Readable } = require("stream");
 const { spawn } = require("child_process");
 const YTDlpWrap = require("yt-dlp-wrap").default;
 const play = require("play-dl");
-const ffmpegPath = require("ffmpeg-static");
+const ffmpegPathRaw = require("ffmpeg-static");
+const ffmpegPath = ffmpegPathRaw.replace('app.asar', 'app.asar.unpacked');
 
 let ytDlpWrap = null;
 let soundcloudReady = false;
