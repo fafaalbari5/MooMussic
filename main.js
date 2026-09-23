@@ -148,7 +148,8 @@ app.whenReady().then(() => {
 
   const win = new BrowserWindow({
     width: 1200,
-    height: 800,
+      height: 800,
+      icon: path.join(__dirname, "icon.ico"),
     minWidth: 900,
     minHeight: 600,
     webPreferences: {
