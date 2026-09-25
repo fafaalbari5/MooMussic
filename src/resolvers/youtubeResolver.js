@@ -34,6 +34,7 @@ async function searchYouTubeViaYtDlp(query) {
           return {
             id: v.id,
             title: v.title,
+            artist: v.uploader || v.channel || "Unknown Artist",
             thumbnail:
               v.thumbnails?.[0]?.url ||
               v.thumbnail ||
@@ -66,6 +67,7 @@ async function searchYouTube(query) {
       return results.map((v) => ({
         id: v.id,
         title: v.title,
+        artist: v.channel?.name || "Unknown Artist",
         thumbnail: v.thumbnails?.[0]?.url || v.thumbnail,
         duration: v.durationRaw || "0:00",
         source: "YouTube",

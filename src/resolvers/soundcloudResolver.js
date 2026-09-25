@@ -24,6 +24,7 @@ async function searchSoundCloud(query) {
       id: String(track.id),
       url: track.permalink || track.url,
       title: track.name || track.title,
+      artist: track.publisher?.artist || track.user?.name || track.author?.name || "Unknown Artist",
       thumbnail: track.thumbnail || track.thumbnails?.[0]?.url,
       duration: formatDuration(track.durationInSec) || "0:00",
       source: "SoundCloud",

@@ -451,7 +451,7 @@ function waitForCanPlay(audioEl, token, timeoutMs = 45000) {
 function updateNowPlayingUI(track, statusText) {
   const defaultArt = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%231565c0'/><path d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z' fill='%23ffffff' transform='translate(36, 36) scale(2)'/></svg>";
   const thumb = track?.thumbnail || defaultArt;
-  const title = track?.title ? `${statusText}: ${track.title}` : "Belum ada lagu";
+  const title = track?.title ? `${statusText}: ${track.title} ` + (track.artist ? `- ${track.artist}` : "") : "Belum ada lagu";
   const platform = track?.source || track?.platform || "-";
 
   const playerArt = document.getElementById("playerAlbumArt");
@@ -463,7 +463,7 @@ function updateNowPlayingUI(track, statusText) {
   if (playerArt) playerArt.src = thumb;
   if (cardArt) cardArt.src = thumb;
   if (cardTitle) cardTitle.textContent = track?.title || "Belum ada lagu";
-  if (cardPlatform) cardPlatform.textContent = platform;
+    if (cardPlatform) cardPlatform.textContent = (track?.artist ? track.artist + " - " : "") + platform;
   if (nowPlayingEl) nowPlayingEl.textContent = title;
 
   if ('mediaSession' in navigator && track) {
@@ -591,6 +591,15 @@ async function search() {
       metaRow.appendChild(durSpan);
 
       detailsDiv.appendChild(titleSpan);
+      
+      const artistSpan = document.createElement("span");
+      artistSpan.className = "track-artist-text";
+      artistSpan.style.fontSize = "11px";
+      artistSpan.style.color = "#666";
+      artistSpan.style.display = "block";
+      artistSpan.style.marginBottom = "4px";
+      artistSpan.textContent = track.artist || "Unknown Artist";
+      detailsDiv.appendChild(artistSpan);
       detailsDiv.appendChild(metaRow);
 
       detailsDiv.onclick = async () => {
@@ -903,6 +912,15 @@ function renderPlaylistTracks() {
     metaRow.appendChild(durSpan);
 
     detailsDiv.appendChild(titleSpan);
+      
+      const artistSpan = document.createElement("span");
+      artistSpan.className = "track-artist-text";
+      artistSpan.style.fontSize = "11px";
+      artistSpan.style.color = "#666";
+      artistSpan.style.display = "block";
+      artistSpan.style.marginBottom = "4px";
+      artistSpan.textContent = track.artist || "Unknown Artist";
+      detailsDiv.appendChild(artistSpan);
     detailsDiv.appendChild(metaRow);
 
     detailsDiv.onclick = () => playFromPlaylist(index, true);
@@ -1237,6 +1255,15 @@ function renderQueue() {
     metaRow.appendChild(badge);
     
     detailsDiv.appendChild(titleSpan);
+      
+      const artistSpan = document.createElement("span");
+      artistSpan.className = "track-artist-text";
+      artistSpan.style.fontSize = "11px";
+      artistSpan.style.color = "#666";
+      artistSpan.style.display = "block";
+      artistSpan.style.marginBottom = "4px";
+      artistSpan.textContent = track.artist || "Unknown Artist";
+      detailsDiv.appendChild(artistSpan);
     detailsDiv.appendChild(metaRow);
     detailsDiv.onclick = () => { manualQueue.splice(i, 1); playTrack(track, 0); renderQueue(); };
 
@@ -1339,6 +1366,15 @@ function renderQueue() {
     metaRow.appendChild(badge);
     metaRow.appendChild(durSpan);
     detailsDiv.appendChild(titleSpan);
+      
+      const artistSpan = document.createElement("span");
+      artistSpan.className = "track-artist-text";
+      artistSpan.style.fontSize = "11px";
+      artistSpan.style.color = "#666";
+      artistSpan.style.display = "block";
+      artistSpan.style.marginBottom = "4px";
+      artistSpan.textContent = track.artist || "Unknown Artist";
+      detailsDiv.appendChild(artistSpan);
     detailsDiv.appendChild(metaRow);
     detailsDiv.onclick = () => playFromPlaylist(idx, true);
     const actionsDiv = document.createElement("div");
